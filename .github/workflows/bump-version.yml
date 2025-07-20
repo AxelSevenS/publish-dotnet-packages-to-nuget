@@ -1,0 +1,68 @@
+name: Bump Project Version
+
+on:
+  workflow_call:
+    inputs:
+      bump-type:
+        description: 'Bump Type'
+        required: true
+        default: '*.*.^'
+        type: string
+      draft:
+        description: 'Whether the release is a draft'
+        required: false
+        default: false
+        type: boolean
+      prerelease:
+        description: 'Whether the release is a prerelease'
+        required: false
+        default: false
+        type: boolean
+    outputs:
+      newVersion:
+        description: 'The new version of the project after the bump'
+        value: ${{ jobs.bump-project-version.outputs.newVersion }}
+      commit:
+        description: 'The long commit hash of the version bump'
+        value: ${{ jobs.bump-project-version.outputs.commit }}
+
+jobs:
+  bump-project-version:
+    runs-on: ubuntu-latest
+    outputs:
+      newVersion: ${{ steps.bump.outputs.newVersion }}
+      commit: ${{ steps.commit.outputs.commit_long_sha }}
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Update .csproj version
+      id: bump
+      uses: vers-one/dotnet-project-version-updater@v1.6
+      with:
+        file: "**/*.csproj"
+        version: ${{ github.event.inputs.bump-type }}
+
+    - name: Commit changes
+      id: commit
+      uses: EndBug/add-and-commit@v9
+      with:
+        add: '*.csproj'
+        message: 'chore: Update projects version to ${{ steps.bump.outputs.newVersion }}'
+        committer_name: GitHub Actions
+        committer_email: actions@github.com
+
+    - name: Create Release
+      id: create-release
+      uses: comnoco/create-release-action@v2.0.5
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ steps.bump.outputs.newVersion }}
+        release_name: v${{ steps.bump.outputs.newVersion }}
+        draft: ${{ inputs.draft }}
+        prerelease: ${{ inputs.prerelease }}
+        commitish: ${{ steps.commit.outputs.commit_long_sha }}
