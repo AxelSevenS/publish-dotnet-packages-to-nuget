@@ -59,38 +59,34 @@ jobs:
         show_log_message: true
 
     - name: Build NuGet Package
+      id: build-nupkg
       run: |
         dotnet build \
           --configuration Release \
-          --output ${{ matrix.project }}/nupkg \
+          --output ./${{ matrix.project }}/nupkg \
           ${{ steps.get-project.outputs.path }}
-
-    - name: Find package
-      id: get-package
-      run: |
-        package=$(find ${{ matrix.project }}/nupkg -type f -name "*.nupkg")
-        echo "path=$package" >> "$GITHUB_OUTPUT"
-        echo "name=$(basename $package)" >> "$GITHUB_OUTPUT"
+        nupkg_dir="./${{ matrix.project }}/nupkg"
+        nupkg_file="${{ matrix.project }}.${{ steps.get-version.outputs.version }}.nupkg"
+        nupkg_path="$nupkg_dir/$nupkg_file"
+        echo "name=$nupkg_file" >> "$GITHUB_OUTPUT"
+        echo "path=$nupkg_path" >> "$GITHUB_OUTPUT"
 
     - name: Publish to Nuget
       id: nuget-push
+      if: fileExists(${{ steps.build-nupkg.outputs.path }})
       run: |
         set -e
-        dotnet nuget push "${{ steps.get-package.outputs.path }}" \
+        dotnet nuget push "${{ steps.build-nupkg.outputs.path }}" \
           --api-key "${{ secrets.NUGET_API_KEY }}" \
-          --source "https://api.nuget.org/v3/index.json" --skip-duplicate || echo "NuGet push exited with code $?"
-
-    - name: Check for duplicate package
-      if: failure() && steps.nuget-push.outcome == 'failure'
-      run: |
-        echo "The package may have been skipped because it is a duplicate (already exists on NuGet)."
+          --source "https://api.nuget.org/v3/index.json"
 
     - name: Publish asset to Release
       uses: actions/upload-release-asset@v1
+      if: fileExists(${{ steps.build-nupkg.outputs.path }})
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ inputs.release-upload-url }}
-        asset_path: ${{ steps.get-package.outputs.path }}
-        asset_name: ${{ steps.get-package.outputs.name }}
+        asset_path: ${{ steps.build-nupkg.outputs.path }}
+        asset_name: ${{ steps.build-nupkg.outputs.name }}
         asset_content_type: application/x-nupkg
