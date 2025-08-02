@@ -11,6 +11,11 @@ on:
         description: 'Release upload URL for the GitHub release where the package will be uploaded'
         required: true
         type: string
+      skip-duplicate:
+        description: 'Whether or not to allow pushing a duplicate package without failing the job'
+        required: false
+        default: false
+        type: boolean
     secrets:
       NUGET_API_KEY:
         required: true
@@ -78,7 +83,8 @@ jobs:
         set -e
         dotnet nuget push "${{ steps.build-nupkg.outputs.path }}" \
           --api-key "${{ secrets.NUGET_API_KEY }}" \
-          --source "https://api.nuget.org/v3/index.json"
+          --source "https://api.nuget.org/v3/index.json" \
+          ${{ inputs.skip-duplicate && '--skip-duplicate' || '' }}
 
     - name: Publish asset to Release
       uses: actions/upload-release-asset@v1
