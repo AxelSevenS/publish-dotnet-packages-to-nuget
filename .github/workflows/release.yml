@@ -11,6 +11,10 @@ on:
         description: 'Release upload URL for the GitHub release where the package will be uploaded'
         required: true
         type: string
+      global-json-file:
+        description: 'Optional global.json location, if your global.json isn''t located in the root of the repo.'
+        required: false
+        type: string
       skip-duplicate:
         description: 'Whether or not to allow pushing a duplicate package without failing the job'
         required: false
@@ -45,7 +49,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
-        global-json-file: global.json
+        global-json-file: ${{ inputs.global-json-file }}
 
     - name: Restore dependencies
       run: dotnet restore
