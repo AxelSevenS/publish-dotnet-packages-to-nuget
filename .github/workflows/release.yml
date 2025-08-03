@@ -83,6 +83,7 @@ jobs:
     - name: Publish to Nuget
       id: nuget-push
       if: fileExists(${{ steps.build-nupkg.outputs.path }})
+      continue-on-error: ${{ inputs.skip-duplicate }}
       run: |
         set -e
         dotnet nuget push "${{ steps.build-nupkg.outputs.path }}" \
@@ -93,6 +94,7 @@ jobs:
     - name: Publish asset to Release
       uses: actions/upload-release-asset@v1
       if: fileExists(${{ steps.build-nupkg.outputs.path }})
+      continue-on-error: ${{ inputs.skip-duplicate }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
